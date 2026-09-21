@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         String        @id @default(cuid())
+  name       String
+  email      String?       @unique
+  phone      String?       @unique
+  sheets     Sheet[]
+  categories ObjCategory[]
+  createdAt  DateTime      @default(now())
+}
+
+// Sheet = rocny pixelovy kalendar, patri jednemu userovi
+model Sheet {
+  id        String   @id @default(cuid())
+  name      String
+  year      Int?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  values    Value[]
+  pixels    Pixel[]
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+}
+
+// Hodnota = polozka legendy (farba + nazov) patriaca jednemu sheetu
+model Value {
+  id      String  @id @default(cuid())
+  color   String
+  name    String
+  sheetId String
+  sheet   Sheet   @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  pixels  Pixel[]
+
+  @@unique([sheetId, name])
+}
+
+// Pixel = jedna bunka matice (den x mesiac), odkazuje na Hodnotu
+model Pixel {
+  id      String  @id @default(cuid())
+  day     Int
+  month   Int
+  sheetId String
+  sheet   Sheet   @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  valueId String?
+  value   Value?  @relation(fields: [valueId], references: [id], onDelete: SetNull)
+
+  @@unique([sheetId, day, month])
+}
+
+// OBJ. KAT. = kategoria vlastnych objektov, patri userovi
+model ObjCategory {
+  id       String   @id @default(cuid())
+  name     String
+  template Json?
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  objects  Objekt[]
+
+  @@unique([userId, name])
+}
+
+// OBJEKT = jedna polozka v kategorii
+model Objekt {
+  id         String      @id @default(cuid())
+  name       String
+  categoryId String
+  category   ObjCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  attributes Attribute[]
+
+  @@unique([categoryId, name])
+}
+
+// ATRIBUTY = vlastne polia jedneho objektu
+model Attribute {
+  id       String        @id @default(cuid())
+  name     String
+  type     AttributeType
+  value    String?
+  objektId String
+  objekt   Objekt        @relation(fields: [objektId], references: [id], onDelete: Cascade)
+
+  @@unique([objektId, name])
+}
+
+enum AttributeType {
+  TEXT
+  INT
+  DATE
+  BOOLEAN
+}
