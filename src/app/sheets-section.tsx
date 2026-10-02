@@ -1,16 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useT } from "@/i18n/context";
 import { SheetsCarousel } from "./sheets-carousel";
 import type { SheetSummary } from "@/lib/sheets";
 import type { CreateSheetAction } from "./sheet-actions";
 
-const CARD_BORDER = "#fbcfe8"; // bledoruzova - docasna, upresni sa neskor
+const CARD_BORDER = "var(--border)";
 
-// Cely "blok" Sheets na hlavnej stranke je klikatelny (nie len jednotlive
-// miniatury) a vzdy vedie na prvy sheet v zozname. Klik na scroll sipky
-// alebo na formular "Nový sheet" (vnutri SheetsCarousel) toto nespusti,
-// lebo si tam zastavia probublavanie udalosti (stopPropagation).
+// Klik na vyplnu/ram karty (mimo konkretnej dlazdice) vedie na prvy sheet
+// v zozname. Klik na konkretnu dlazdicu vedie na TU dlazdicu (ma vlastny
+// stopPropagation, aby sa neaktivoval aj tento onClick). Klik na scroll
+// sipky alebo na formular "Nový sheet" (vnutri SheetsCarousel) tiez
+// zastavi probublavanie.
 export function SheetsSection({
   sheets,
   createSheet,
@@ -19,6 +21,7 @@ export function SheetsSection({
   createSheet: CreateSheetAction;
 }) {
   const router = useRouter();
+  const t = useT();
 
   function goToFirstSheet() {
     if (sheets.length > 0) {
@@ -31,17 +34,19 @@ export function SheetsSection({
       onClick={goToFirstSheet}
       style={{
         border: `2px solid ${CARD_BORDER}`,
-        borderRadius: 20,
+        borderRadius: 7,
+        backgroundColor: "var(--card-fill)",
         cursor: sheets.length > 0 ? "pointer" : "default",
+        marginLeft: "auto",
+        marginRight: "auto",
+        marginBottom: "1.5rem",
       }}
-      className="p-4 mb-6"
+      // "section-width" (definovane v globals.css): 95% vsade, 100% len na
+      // telefone na stojato (media query, nedá sa vyjadriť inline stylom).
+      className="p-4 section-width"
     >
-      <h2 className="text-lg font-medium mb-3 px-1">Sheets</h2>
-      <SheetsCarousel
-        sheets={sheets}
-        createSheet={createSheet}
-        firstSheetHref={sheets.length > 0 ? `/sheets/${sheets[0].id}` : undefined}
-      />
+      <h2 className="text-lg font-medium mb-3 px-1">{t.home.sheetsHeading}</h2>
+      <SheetsCarousel sheets={sheets} createSheet={createSheet} />
     </section>
   );
 }

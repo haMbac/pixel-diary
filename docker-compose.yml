@@ -1,0 +1,14 @@
+services:
+  # Lokalny SMTP "catcher" pre vyvoj (bod: auth cez email s overovacim
+  # kodom) - appka posle skutocny SMTP mail, ale MailHog ho namiesto
+  # doruceni zachyti a zobrazi vo webovom rozhrani na localhost:8025. V
+  # produkcii ide rovnaky kod (Nodemailer cez SMTP) na Resend-ov SMTP relay
+  # namiesto tohto - meni sa len SMTP_HOST/PORT v .env, nie kod appky.
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      # 1026/8026 (nie standardnych 1025/8025) - na tomto stroji uz bezi iny
+      # projekt s vlastnym MailHogom na standardnych portoch; tento projekt
+      # ma mat svoju vlastnu, nezavislu instanciu.
+      - "1026:1025" # SMTP - sem posiela appka
+      - "8026:8025" # Web UI - tu si P prezrie zachytene maily

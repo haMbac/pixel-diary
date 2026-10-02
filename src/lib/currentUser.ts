@@ -1,14 +1,17 @@
-import { prisma } from "@/lib/prisma";
+import { cache } from "react";
+import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/session";
 
-// DOCASNE: kym nemame prihlasovanie, pracujeme s prvym userom v databaze.
-// Ked pridame auth, tato funkcia sa nahradi citanim prihlaseneho usera
-// (napr. zo session/cookie) a zvysny kod appky sa nezmeni.
-export async function getCurrentUser() {
-  const user = await prisma.user.findFirst();
+// Bod 1.1: nahradene skutocnym prihlasovanim (predtym "docasne" - prvy
+// user v DB). "proxy.ts" uz zvycajne presmeruje neprihlaseneho P na
+// /login skor, nez sa sem vobec dostane, ale toto ostava ako druha
+// poistka priamo tu (Next.js odporuca overovat aj vnutri kazdej Server
+// Function, nie sa spoliehat len na Proxy). V React cache(), aby stranka a
+// jej generateMetadata v jednej poziadavke nedopytovali session dvakrat.
+export const getCurrentUser = cache(async () => {
+  const user = await getSessionUser();
   if (!user) {
-    throw new Error(
-      "Ziadny user v databaze. Spusti: node --env-file=.env prisma/seed.ts"
-    );
+    redirect("/login");
   }
   return user;
-}
+});

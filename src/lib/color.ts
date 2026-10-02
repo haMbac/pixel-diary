@@ -48,3 +48,15 @@ export function colorDistance(hexA: string, hexB: string): number {
 
 // Prah pod ktory dve farby povazujeme za "prilis podobne" v legende.
 export const MIN_COLOR_DISTANCE = 20;
+
+// Najviac hodnot (farieb) na jeden sheet. Aj idealne vybrane farby su v
+// malych bunkach na prvy pohlad jasne odlisne (Delta E 40-50) len do ~15-23
+// kusov, rucne vybrane skor menej - 12 nechava rezervu.
+export const MAX_VALUES_PER_SHEET = 12;
+
+// Ci na tejto farbe bude lepsie citatelne svetle (biele) pismo nez tmave -
+// napr. cislo dna vnutri vyfarbenej bunky v kalendari. L* (svetlost v Lab)
+// pod ~55 citame ako tmavu farbu.
+export function isDarkColor(hex: string): boolean {
+  return hexToLab(hex)[0] < 55;
+}

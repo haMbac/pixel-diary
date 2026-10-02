@@ -9,11 +9,53 @@ datasource db {
 model User {
   id         String        @id @default(cuid())
   name       String
+  // Bod 1.1: email je PRIHLASOVACI identifikator, ked existuje. Nullable
+  // kvoli guest modu (anonymny ucet bez emailu) - Postgres UNIQUE dovoluje
+  // viacero NULL hodnot, takze to neoslabuje unikatnost pre skutocne ucty.
+  // "phone" ostava volitelny a zatial sa nikde nevyuziva.
   email      String?       @unique
   phone      String?       @unique
+  role       UserRole      @default(USER)
   sheets     Sheet[]
   categories ObjCategory[]
+  sessions   Session[]
   createdAt  DateTime      @default(now())
+}
+
+// Zatial bez skutocneho pouzitia v kode (ziadna admin-only funkcia este
+// neexistuje) - pripravene vopred, aby existoval samostatny "admin" ucet
+// (beka-software.at) oddeleny od bezneho osobneho uctu (gmail).
+enum UserRole {
+  USER
+  ADMIN
+}
+
+// Bod 1.1/2.11: jednorazovy overovaci kod poslany na email pri prihlaseni
+// alebo registracii. "email" je @unique - nova ziadost o kod (novy
+// "requestLoginCode") prepise predchadzajuci nevyuzity kod tej istej
+// adresy (upsert), takze vzdy existuje najviac jeden platny kod na email.
+// "codeHash" (nie kod samotny) - aj keby niekto zohladol DB, neuvidi
+// pouzitelny kod. "attempts" pocita zle zadania kodu (zamykanie po
+// niekolkych pokusoch proti hadaniu 6-cifer naslepo).
+model LoginCode {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  codeHash  String
+  attempts  Int      @default(0)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// Bod 1.1/2.3: prihlasena relacia. "id" sluzi priamo ako hodnota cookie
+// (nepredvidatelne uuid, nie citatelny cuid) - "onDelete: Cascade" na
+// userId znamena, ze vymazanie uctu (2.3) automaticky odhlasi/zrusi vsetky
+// jeho relacie bez samostatneho kroku naviac.
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 // Sheet = rocny pixelovy kalendar, patri jednemu userovi
@@ -26,11 +68,14 @@ model Sheet {
   values    Value[]
   pixels    Pixel[]
   createdAt DateTime @default(now())
+  order     Int      @default(0)
 
   @@unique([userId, name])
 }
 
-// Hodnota = polozka legendy (farba + nazov) patriaca jednemu sheetu
+// Hodnota = polozka legendy (farba + nazov) patriaca jednemu sheetu.
+// "order" = poradie v palete (presuva sa tahanim v edit rezime), rovnako
+// ako Sheet.order v menu sheetov.
 model Value {
   id      String  @id @default(cuid())
   color   String
@@ -38,6 +83,7 @@ model Value {
   sheetId String
   sheet   Sheet   @relation(fields: [sheetId], references: [id], onDelete: Cascade)
   pixels  Pixel[]
+  order   Int     @default(0)
 
   @@unique([sheetId, name])
 }
@@ -56,6 +102,11 @@ model Pixel {
 }
 
 // OBJ. KAT. = kategoria vlastnych objektov, patri userovi
+// "template" = schema atributov kategorie (pole { id, name, type,
+// ratingScale? } - pozri AttributeSchema v src/lib/objects.ts). Toto je
+// jediny zdroj pravdy o tom, ake atributy kategoria ma; jednotlive Objekty
+// maju vlastne Attribute riadky odkazujuce spat na "template" cez
+// templateId (nie cez name, lebo nazov sa da premenovat).
 model ObjCategory {
   id       String   @id @default(cuid())
   name     String
@@ -63,6 +114,11 @@ model ObjCategory {
   userId   String
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   objects  Objekt[]
+  order    Int      @default(0)
+  // Ikona kategorie - bud kluc do preddefinovanej sady (napr. "book-open",
+  // pozri src/lib/icons.ts) alebo cesta k nahranej fotke ("/uploads/...").
+  // null = zatial nevybrata (padne na fallback ikonu pri vykreslovani).
+  icon     String?
 
   @@unique([userId, name])
 }
@@ -74,25 +130,34 @@ model Objekt {
   categoryId String
   category   ObjCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   attributes Attribute[]
+  createdAt  DateTime    @default(now())
+  // Vlastna ikona/fotka objektu - ak je nastavena, prebije ikonu kategorie
+  // len pre tento jeden objekt (rovnaky format ako ObjCategory.icon).
+  icon       String?
 
   @@unique([categoryId, name])
 }
 
-// ATRIBUTY = vlastne polia jedneho objektu
+// ATRIBUTY = hodnota jedneho atributu (podla sablony kategorie) pre
+// konkretny objekt. "templateId" odkazuje na prislusnu polozku v
+// ObjCategory.template - je to stabilna identita, ktora prezije aj
+// premenovanie atributu (na rozdiel od "name", ktore je len denormalizovana
+// kopia kvoli jednoduchemu vykresleniu bez parsovania JSON sablony).
 model Attribute {
-  id       String        @id @default(cuid())
-  name     String
-  type     AttributeType
-  value    String?
-  objektId String
-  objekt   Objekt        @relation(fields: [objektId], references: [id], onDelete: Cascade)
+  id          String        @id @default(cuid())
+  templateId  String
+  name        String
+  type        AttributeType
+  ratingScale Int?
+  value       String?
+  objektId    String
+  objekt      Objekt        @relation(fields: [objektId], references: [id], onDelete: Cascade)
 
-  @@unique([objektId, name])
+  @@unique([objektId, templateId])
 }
 
 enum AttributeType {
   TEXT
-  INT
-  DATE
-  BOOLEAN
+  NUMBER
+  RATING
 }

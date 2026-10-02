@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { daysInMonth } from "@/lib/calendar";
 import type { SheetSummary } from "@/lib/sheets";
 import type { CreateSheetAction } from "./sheet-actions";
+import { ChevronLeftIcon, ChevronRightIcon } from "./ui-icons";
+import { useT } from "@/i18n/context";
 
 type PixelDot = SheetSummary["pixels"][number];
 
@@ -60,24 +62,37 @@ export function SheetThumbnail({
     </div>
   );
 }
-export const PINK_BORDER = "#fbcfe8"; // Tailwind pink-200 - docasna farba, upresni sa neskor
+export const PINK_BORDER = "var(--border)";
 
 export function SheetsCarousel({
   sheets,
   createSheet,
-  firstSheetHref,
 }: {
   sheets: SheetSummary[];
   createSheet: CreateSheetAction;
-  // Nepovinne: ked je zadane, KAZDA miniatura vedie na tuto (rovnaku)
-  // adresu namiesto na svoj vlastny sheet. Pouziva sa na hlavnej stranke -
-  // cely "blok" s miniaturami tak funguje ako jeden vstup vzdy na prvy
-  // sheet v zozname (presna URL sa pocita na serveri, lebo funkcie sa
-  // nedaju posielat zo Server do Client Componentu). V "menu sheetov" sa
-  // nezadava - tam kazda miniatura vedie na svoj vlastny sheet.
-  firstSheetHref?: string;
 }) {
+  const t = useT();
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Sipky sa ukazu len ked sa vsetky dlazdice do riadku nezmestia (obsah je
+  // sirsi ako kontajner) - nie proste vzdy, ked existuje aspon 1 sheet.
+  // ResizeObserver prepocita pri kazdej zmene velkosti okna aj pri zmene
+  // poctu sheetov.
+  const [canScroll, setCanScroll] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    function checkOverflow() {
+      if (!el) return;
+      setCanScroll(el.scrollWidth > el.clientWidth + 1);
+    }
+
+    checkOverflow();
+    const observer = new ResizeObserver(checkOverflow);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [sheets.length]);
 
   function scroll(direction: 1 | -1) {
     scrollRef.current?.scrollBy({ left: direction * 260, behavior: "smooth" });
@@ -85,17 +100,17 @@ export function SheetsCarousel({
 
   return (
     <div className="relative">
-      {sheets.length > 0 && (
+      {canScroll && (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             scroll(-1);
           }}
-          aria-label="Predchádzajúce sheety"
-          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 bg-white shadow rounded-full w-8 h-8 flex items-center justify-center text-gray-500"
+          aria-label={t.sheetsBrowse.prevArrowLabel}
+          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 p-1 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--ink)]"
         >
-          ‹
+          <ChevronLeftIcon />
         </button>
       )}
 
@@ -107,7 +122,8 @@ export function SheetsCarousel({
         {sheets.map((sheet) => (
           <Link
             key={sheet.id}
-            href={firstSheetHref ?? `/sheets/${sheet.id}`}
+            href={`/sheets/${sheet.id}`}
+            onClick={(e) => e.stopPropagation()}
             className="shrink-0 flex flex-col items-center justify-center gap-2 hover:shadow-sm transition-shadow p-2"
             style={{
               width: THUMB_WIDTH + 24,
@@ -127,17 +143,17 @@ export function SheetsCarousel({
         <AddSheetTile createSheet={createSheet} />
       </div>
 
-      {sheets.length > 0 && (
+      {canScroll && (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             scroll(1);
           }}
-          aria-label="Ďalšie sheety"
-          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 bg-white shadow rounded-full w-8 h-8 flex items-center justify-center text-gray-500"
+          aria-label={t.sheetsBrowse.nextArrowLabel}
+          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 p-1 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--ink)]"
         >
-          ›
+          <ChevronRightIcon />
         </button>
       )}
     </div>
@@ -148,6 +164,7 @@ export function SheetsCarousel({
 // sheetov") otvori OKNO (modal) na vytvorenie noveho sheetu - dlazdica sama
 // je len tlacidlo, formular je az v prekryvnom okne.
 export function AddSheetTile({ createSheet }: { createSheet: CreateSheetAction }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [state, formAction, isPending] = useActionState(createSheet, {
     error: null,
@@ -166,11 +183,12 @@ export function AddSheetTile({ createSheet }: { createSheet: CreateSheetAction }
           height: THUMB_HEIGHT + 40,
           borderRadius: 16,
           border: `2px dashed ${PINK_BORDER}`,
+          color: "var(--accent)",
         }}
-        className="shrink-0 flex flex-col items-center justify-center gap-1 p-2 text-pink-400"
+        className="shrink-0 flex flex-col items-center justify-center gap-1 p-2"
       >
         <span className="text-3xl leading-none">+</span>
-        <span className="text-xs text-gray-400">Nový sheet</span>
+        <span className="text-xs text-gray-400">{t.sheetsBrowse.newSheetTileLabel}</span>
       </button>
 
       {open && (
@@ -184,12 +202,12 @@ export function AddSheetTile({ createSheet }: { createSheet: CreateSheetAction }
             className="bg-white p-6 max-w-sm w-full"
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium">Nový sheet</h2>
+              <h2 className="text-lg font-medium">{t.sheetsBrowse.newSheetModalTitle}</h2>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Zavrieť"
-                title="Zavrieť"
+                aria-label={t.sheetsBrowse.closeButtonLabel}
+                title={t.sheetsBrowse.closeButtonLabel}
                 className="text-gray-400 hover:text-gray-600 text-sm"
               >
                 ✕
@@ -197,22 +215,22 @@ export function AddSheetTile({ createSheet }: { createSheet: CreateSheetAction }
             </div>
             <form action={formAction} className="flex flex-col gap-3">
               <label className="text-sm text-gray-600">
-                Názov
+                {t.sheetsBrowse.nameFieldLabel}
                 <input
                   type="text"
                   name="name"
-                  placeholder="napr. Nálady 2027"
-                  className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-300"
+                  placeholder={t.sheetsBrowse.nameFieldPlaceholder}
+                  className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
                 />
               </label>
               <label className="text-sm text-gray-600">
-                Rok (nepovinné)
+                {t.sheetsBrowse.yearFieldLabel}
                 <input
                   type="number"
                   name="year"
-                  placeholder="napr. 2027"
+                  placeholder={t.sheetsBrowse.yearFieldPlaceholder}
                   defaultValue={new Date().getFullYear()}
-                  className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-pink-300"
+                  className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[var(--accent)]"
                 />
               </label>
               {state.error && <p className="text-red-600 text-sm">{state.error}</p>}
@@ -221,7 +239,7 @@ export function AddSheetTile({ createSheet }: { createSheet: CreateSheetAction }
                 disabled={isPending}
                 className="bg-black text-white rounded px-4 py-2 text-sm disabled:opacity-50 mt-2"
               >
-                {isPending ? "Vytváram…" : "Create"}
+                {isPending ? t.sheetsBrowse.creatingButtonLabel : t.sheetsBrowse.createButtonLabel}
               </button>
             </form>
           </div>

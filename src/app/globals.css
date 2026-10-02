@@ -1,8 +1,37 @@
 @import "tailwindcss";
 
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #2b2a28;
+
+  /* Dizajn "grid paper" (bod: notebook pocit, nie prilis kurzivny, pixelovy
+     font na hlavny nadpis, neutralne farby) - teply neutralny papier +
+     atrament + jeden zdrzanlivy akcent. Nahradza povodnu ruzovo-mauve
+     paletu (--color-0 az --color-5). Farby legendy/hodnot v sheetoch su
+     POUZIVATELSKE UDAJE (vlastny <input type="color">) a touto paletou nie
+     su nijako obmedzene - tento redizajn sa tyka len chromu appky samotnej.
+  */
+  --paper: #f7f5f0;
+  --paper-line: #e7e4d8;
+  --ink: #2b2a28;
+  --ink-muted: #8a8a82;
+  --card-fill: #ffffff;
+  --card-border: #d9d6c8;
+  --accent: #b5654a;
+  --accent-soft: #f3e4dd;
+
+  /* Semanticke pouzitie palety - komponenty odkazuju na tieto, nie priamo
+     na --paper/--ink/atd., takze paletu neskor staci vymenit len tu. */
+  --background: var(--paper);
+  --border: var(--card-border);
+  --border-hover: rgba(43, 42, 40, 0.06);
+  --text-muted: var(--ink-muted);
+
+  /* "Apple Chancery" je systemovy font (sucast macOS/iOS) - ostava
+     nacitany, ale od tohto dizajnu uz nikde nepouzivany (P skusal viacero
+     fontov behom vyvoja appky, tento zostava k dispozicii ak by sa k nemu
+     chcela este niekedy vratit). */
+  --font-apple-chancery: "Apple Chancery", cursive;
 }
 
 @theme inline {
@@ -12,15 +41,559 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Poistka proti vodorovnemu pretecetiu celej stranky (napr. kvoli
+   karuselu sheetov, ktory je zamerne sirsi nez obrazovka a ma sa
+   scrollovat SAM v sebe) - bez tohto by mobil na uzsich obrazovkach mohol
+   vyzerat "priblizeny", lebo by sa cela stranka roztiahla nasirku. Nastavene
+   na oboch (html aj body), lebo prehliadace sa lisia v tom, ktory z nich
+   je skutocny "root scroller". Na body "clip", nie "hidden" - "hidden" by z
+   body urobil vlastny scroll kontajner (overflow-y sa prepocita na auto) a
+   position: sticky (paleta farieb na stranke sheetu) by sa potom nikdy
+   neprilepil, lebo body sa samo nescrolluje - scrolluje viewport. */
+html {
+  overflow-x: hidden;
+}
+body {
+  overflow-x: clip;
+}
+
+/* Sirka fixnych vlajok jazyka vpravo hore (language-switcher.tsx) - prvky,
+   ktore by inak skoncili pod nimi (✎ v hlavicke stranky, prilepena paleta),
+   si nechavaju vpravo tolko miesta. */
+:root {
+  --lang-switcher-w: 5rem;
+}
+
+@layer base {
+  /* Tailwind v4 uz tlacidlam nedava "pointer" kurzor (vracia povodne
+     spravanie prehliadaca) - v appke ma ale vsetko klikatelne ukazovat
+     ruku, rovnako ako odkazy. V "base" vrstve, aby inline "grab" (presuvanie
+     dlazdic) a triedy ako "cursor-not-allowed" stale vyhrali. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled),
+  summary,
+  label:has(input[type="checkbox"]:not(:disabled)),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="color"]:not(:disabled),
+  input[type="file"]:not(:disabled),
+  input[type="range"]:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled,
+  input:disabled {
+    cursor: not-allowed;
+  }
+
+  /* V "base" vrstve (nie ako nadpisy nizsie mimo vrstiev) - pravidlo mimo
+     vrstvy by vyhralo nad kazdou Tailwind triedou, takze napr.
+     <p className="text-red-600"> chybove hlasky boli doteraz v farbe
+     atramentu, nie cervene. Nadpisy zamerne ostavaju mimo vrstvy, aby ich
+     vzhlad ostal presne taky ako doteraz. */
+  p {
+    color: var(--ink);
+    font-family: var(--font-plex-sans), sans-serif;
+    font-size: clamp(0.85rem, 3vw, 1rem);
   }
 }
 
+/* Jemna stvorcova mriezka na pozadi ("grid paper") - dizajn ma posobit ako
+   zosit/notebook, nie ako plna farebna plocha. Vzor je na "body" (rovnaky
+   na kazdej stranke), nie duplikovany v jednotlivych komponentoch. */
 body {
   background: var(--background);
+  background-image:
+    linear-gradient(var(--paper-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+  background-size: 20px 20px;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-plex-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Pixelovy nadpis - zamerne skromnej velkosti (nie "over the top"): blokovy
+   font uz sam osebe vyzera vyrazne, velke rozmery by posobili tazkopadne.
+   Verzalky + rozostrenie pismen (letter-spacing) mu daju charakter bez
+   toho, aby musel byt obrovsky. */
+h1 {
+  color: var(--ink);
+  font-family: var(--font-pixel), monospace;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: clamp(1.4rem, 7vw, 2.25rem);
+}
+
+h2 {
+  color: var(--ink);
+  font-family: var(--font-plex-sans), sans-serif;
+  font-weight: 600;
+  font-size: clamp(1.05rem, 4vw, 1.375rem);
+}
+
+h3 {
+  color: var(--ink);
+  font-family: var(--font-plex-sans), sans-serif;
+  font-weight: 600;
+  font-size: clamp(0.95rem, 3.5vw, 1.125rem);
+}
+
+/* Sirka karty "Sheets"/"Objekty" - 95% vsade (desktop, tablet, telefon na
+   lezato), okrem telefonu na stojato (uzka+vysoka obrazovka), kde je 100%
+   (nech sa vyuzije kazdy px sirky). Inline "style" nemoze obsahovat media
+   query, preto je to samostatna trieda. */
+.section-width {
+  width: 70%;
+}
+
+@media (orientation: landscape) and (max-width: 1200px) {
+  .section-width {
+    width: 95%;
+  }
+}
+@media (orientation: portrait) and (max-width: 480px) {
+  .section-width {
+    width: 100%;
+  }
+}
+
+/* Celkova sirka stranky sheetu/kategorie. Od 481px az 64rem - zobrazenie
+   "mesiace v riadkoch" (31 stlpcov dni) a kalendar (az 4 mesiace vedla
+   seba) potrebuju celu tuto sirku. */
+.sheet-page-width {
+  max-width: min(36rem, 100vw);
+}
+@media (min-width: 481px) {
+  .sheet-page-width {
+    max-width: min(64rem, 100vw);
+  }
+}
+
+/* Spodna lista (Dnes / PDF / menu) - spolocna pre hlavnu stranku, stranku
+   sheetu aj kategorie. Na nizkych obrazovkach (mobil na lezato) ostava
+   prilepena dole, len tensia, aby spolu s prilepenou paletou nezabrala
+   prilis vysky. */
+@layer components {
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    background-color: var(--card-fill);
+    border-top: 1px solid var(--border);
+  }
+  @media (max-height: 500px) {
+    .bottom-bar {
+      padding: 0.25rem 0;
+    }
+  }
+}
+
+/* Atributy + Objekty na stranke kategorie - rovnaky vzor ako
+   ".legenda-mriezka" vyssie, ale s uzsim prvym stlpcom a nizsim zlomovym
+   bodom: atributy su zvycajne len 2-3 kratke riadky, kym Objekty su teraz
+   mriezka vacsich dlazdic a potrebuju vacsinu sirky, aj v uzsom okne.
+   (Samostatna trieda namiesto zdielania ".legenda-mriezka" - ten 400px
+   sidebar bol na stranke sheetu zamerne rozsireny kvoli farebnemu pickeru
+   a nemal by sa tym zuzit.) 420px staci na 200px Atributy + medzeru + jednu
+   dlazdicu (150px) objektu aj s odsadenim stranky - nizsie uz je menej
+   miesta nez na jednu dlazdicu, preto tam ostava stlpec pod stlpcom. */
+.atributy-objekty {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+@media (min-width: 420px) {
+  .atributy-objekty {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .atributy-objekty > :first-child {
+    flex: 0 0 auto;
+    width: 200px;
+  }
+  .atributy-objekty > :last-child {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Paleta farieb nad mriezkou sheetu (value-palette.tsx) - prilepena hore
+   pri scrollovani; nepriehladne pozadie, aby pod nou mriezka "zmizla".
+   Cez celu sirku - ked je prilepena, prekryje fixne vlajky jazyka v
+   pravom hornom rohu (language-switcher.tsx ma nizsi z-index), po
+   odscrollovani hore su vlajky znova vidiet. Cipy sa zalamuju do dalsich
+   riadkov, aby boli vzdy vidiet vsetky hodnoty. Pas palety ide od laveho
+   po pravy okraj okna (nie len cez sirku mriezky) - zaporne okraje
+   "calc(50% - 50vw)" ho roztiahnu z vycentrovaneho obsahu stranky az k
+   okrajom obrazovky, cipy su v nom vycentrovane. */
+.value-palette {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background-color: var(--background);
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--paper-line);
+}
+.value-palette-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.375rem;
+}
+.palette-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 10rem;
+  padding: 0.25rem 0.625rem 0.25rem 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background-color: var(--card-fill);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+.palette-chip[aria-pressed="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  color: var(--ink);
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .palette-chip:hover {
+    color: var(--ink);
+    border-color: var(--ink-muted);
+  }
+}
+.palette-chip--add {
+  padding: 0.25rem 0.625rem;
+  font-size: 1rem;
+}
+/* V edit rezime sa cipy daju tahat. "pan-y" necha stranku scrollovat, kym
+   sa tahanie prstom (po kratkom podrzani) neodomkne; bez potlacenia
+   oznacovania textu/Safari menu by dlhe podrzanie robilo nieco ine. */
+.palette-chip--draggable {
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.palette-chip--ghost {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  cursor: grabbing;
+  transform: translate(-50%, -50%) rotate(-2deg);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+.palette-drop-slot {
+  flex: 0 0 auto;
+  border: 2px dashed var(--border);
+  border-radius: 9999px;
+  background-color: var(--accent-soft);
+}
+.palette-swatch {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+.palette-swatch--eraser {
+  background-color: #ffffff;
+  background-image: linear-gradient(to bottom right, transparent 45%, #ef4444 45%, #ef4444 55%, transparent 55%);
+}
+.palette-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mriezka roka (year-grid.tsx) - to iste HTML ako mesiace v stlpcoch
+   (grid-auto-flow: row, 13 stlpcov) alebo transponovane ako mesiace v
+   riadkoch (grid-auto-flow: column, 13 riadkov). "--auto" pouziva jedno
+   alebo druhe podla orientacie obrazovky, bez JS. */
+.yg {
+  display: grid;
+  gap: 2px;
+}
+/* touch-action: manipulation - dvojite tuknutie na bunku ju vymaze
+   (sheet-editor.tsx); bez toho by ho iPhone pouzil na priblizenie stranky. */
+.yg-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  padding: 0;
+  touch-action: manipulation;
+}
+.yg-cell--none {
+  background-color: #d1d5db;
+}
+.yg-label {
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--text-muted);
+}
+/* Obrys bunky pod kurzorom presahuje bunku o 3px - bez z-index by ho
+   susedne bunky (vykreslene po nej) ciastocne prekryli. */
+@media (hover: hover) {
+  .yg-cell:not(.yg-cell--none):hover {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--ink);
+    outline-offset: 1px;
+  }
+}
+.yg-cell:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+/* Mesiace v stlpcoch: 31 riadkov je vyssich nez obrazovka mobilu, preto
+   hlavicka mesiacov ostava prilepena tesne pod paletou (--palette-h meria
+   sheet-editor.tsx). Box-shadow v farbe pozadia zakryje 2px medzery medzi
+   prilepenymi nazvami, cez ktore by inak presvitali odscrollovane bunky. */
+.yg--columns {
+  grid-template-columns: 1.5rem repeat(12, minmax(0, 1.75rem));
+  grid-auto-flow: row;
+}
+.yg--columns .yg-month {
+  justify-content: center;
+}
+.yg--columns .yg-day {
+  justify-content: flex-end;
+  padding-right: 0.25rem;
+}
+.yg--columns .yg-month,
+.yg--columns .yg-corner {
+  position: sticky;
+  top: var(--palette-h, 0px);
+  z-index: 4;
+  background-color: var(--background);
+  box-shadow: 0 0 0 2px var(--background);
+}
+
+/* Mesiace v riadkoch: 31 stlpcov dni - na uzkej obrazovke sa mriezka radsej
+   posuva do strany, nez by sa bunky zmensili na nepouzitelnych ~9px. Len v
+   tomto zobrazeni je obal scrollovatelny do strany - v stlpcovom by
+   scrollovaci obal znefunkcnil prilepenu hlavicku mesiacov. */
+.yg--rows {
+  grid-template-rows: repeat(13, auto);
+  grid-template-columns: 2.5rem;
+  grid-auto-columns: minmax(1.1rem, 1.75rem);
+  grid-auto-flow: column;
+}
+.yg--rows .yg-month {
+  justify-content: flex-end;
+  padding-right: 0.375rem;
+}
+.yg--rows .yg-day {
+  justify-content: center;
+}
+/* Vnutorny okraj (vyrovnany zapornym), aby scrollovaci obal neorezal
+   obrys bunky pod kurzorom na okrajoch mriezky. */
+.yg-scroll--rows {
+  overflow-x: auto;
+  padding: 4px;
+  margin: -4px;
+}
+
+@media (orientation: portrait) {
+  .yg--auto {
+    grid-template-columns: 1.5rem repeat(12, minmax(0, 1.75rem));
+    grid-auto-flow: row;
+  }
+  .yg--auto .yg-month {
+    justify-content: center;
+  }
+  .yg--auto .yg-day {
+    justify-content: flex-end;
+    padding-right: 0.25rem;
+  }
+  .yg--auto .yg-month,
+  .yg--auto .yg-corner {
+    position: sticky;
+    top: var(--palette-h, 0px);
+    z-index: 4;
+    background-color: var(--background);
+    box-shadow: 0 0 0 2px var(--background);
+  }
+}
+@media (orientation: landscape) {
+  .yg--auto {
+    grid-template-rows: repeat(13, auto);
+    grid-template-columns: 2.5rem;
+    grid-auto-columns: minmax(1.1rem, 1.75rem);
+    grid-auto-flow: column;
+  }
+  .yg--auto .yg-month {
+    justify-content: flex-end;
+    padding-right: 0.375rem;
+  }
+  .yg--auto .yg-day {
+    justify-content: center;
+  }
+  .yg-scroll--auto {
+    overflow-x: auto;
+    padding: 4px;
+    margin: -4px;
+  }
+}
+
+/* Kalendar (calendar-grid.tsx) - 2 / 3 / 4 mesiace vedla seba podla sirky
+   (pevne zlomy, nie auto-fill, ktory by vedel dat aj 5 a 12 mesiacov by
+   sa nerozlozilo rovnomerne). */
+.cal {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 0.75rem;
+}
+@media (min-width: 560px) {
+  .cal {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 900px) {
+  .cal {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.cal-title {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  padding: 0 0.375rem;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cal-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.cal-weekday {
+  border-radius: 3px;
+  font-size: 0.625rem;
+  line-height: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+.cal-cell,
+.cal-empty {
+  width: 100%;
+  aspect-ratio: 1;
+}
+.cal-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 3px;
+  font-size: 0.625rem;
+  line-height: 1;
+  touch-action: manipulation;
+}
+@media (hover: hover) {
+  .cal-cell:hover {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--ink);
+    outline-offset: 1px;
+  }
+}
+.cal-cell:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+/* Nahlad strany A4 na export do PDF (print-sheet.tsx). --u = 1 mm papiera,
+   odvodeny od sirky ramu (container query jednotka cqw) - nahlad na uzkej
+   obrazovke je tak verne zmensena strana a ramy blokov sedia presne na
+   nakreslenom obsahu. */
+.paper-frame {
+  container-type: inline-size;
+  max-width: 210mm;
+  margin: 0 auto;
+}
+.paper-frame--landscape {
+  max-width: 297mm;
+}
+.paper {
+  --u: calc(100cqw / 210);
+  position: relative;
+  width: 100cqw;
+  height: calc(var(--u) * 296);
+  overflow: hidden;
+  background-color: #ffffff;
+  color: #1f1f1f;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+  font-family: var(--font-plex-sans), sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.paper--landscape {
+  --u: calc(100cqw / 297);
+  height: calc(var(--u) * 209);
+}
+/* Bloky stranky (nadpis, mriezka, legenda, poznamky) - kazdy ma polohu a
+   velkost v mm (inline style z print-sheet.tsx). V nahlade su tahatelne:
+   jemny prerusovany ramik ukazuje, ze sa daju chytit, roh vpravo dole meni
+   velkost. Do ulozeneho PDF sa ramiky nekreslia (to kresli len canvas). */
+.paper-block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.paper-block--editable {
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: 1px dashed rgba(0, 0, 0, 0.14);
+  outline-offset: 0;
+}
+.paper-block--editable:hover {
+  outline: 1px dashed var(--accent);
+}
+.paper-block-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: max(20px, calc(var(--u) * 5));
+  height: max(20px, calc(var(--u) * 5));
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, var(--accent) 50%);
+  opacity: 0.55;
+}
+.paper-block--editable:hover .paper-block-handle {
+  opacity: 1;
+}
+/* Obsah strany kresli canvas (page-render.ts) - rovnaky kod ako ulozene
+   PDF; ramy blokov lezia nad nim. */
+.paper-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }

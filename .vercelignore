@@ -1,0 +1,11 @@
+# Lokalne nastavenia (MailHog, heslo k databaze) - na Verceli su v
+# Project Settings -> Environment Variables, nie v nahratych suboroch.
+.env
+.env.*
+# Vercel aj tak nainstaluje/zostavi nanovo.
+node_modules
+.next
+# Lokalne dev pomocky.
+docker-compose.yml
+scripts/ensure-mailhog.sh
+.DS_Store
